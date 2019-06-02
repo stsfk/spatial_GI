@@ -35,4 +35,21 @@ polygon_hole = rbind(c(2, 4), c(3, 4), c(3, 3), c(2, 3), c(2, 4))
 polygon_with_hole_list = list(polygon_border, polygon_hole)
 st_polygon(polygon_with_hole_list)
 
+lnd_point = st_point(c(0.1, 51.5))                 # sfg object
+lnd_geom = st_sfc(lnd_point, crs = 4326)           # sfc object
+lnd_attrib = data.frame(                           # data.frame object
+  name = "London",
+  temperature = 25,
+  date = as.Date("2017-06-21")
+)
+lnd_sf = st_sf(lnd_attrib, geometry = lnd_geom)    # sf object
+
+
+
+
+
+
+
+
+
 
