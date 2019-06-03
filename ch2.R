@@ -44,9 +44,10 @@ lnd_attrib = data.frame(                           # data.frame object
 )
 lnd_sf = st_sf(lnd_attrib, geometry = lnd_geom)    # sf object
 
-
-
-
+crs_data = rgdal::make_EPSG()
+#View(crs_data)
+vector_filepath = system.file("vector/zion.gpkg", package = "spDataLarge")
+new_vector = st_read(vector_filepath)
 
 
 
