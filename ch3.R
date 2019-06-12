@@ -35,7 +35,11 @@ world %>%
   slice(1:3) %>%
   st_drop_geometry()
 
+world_coffee = left_join(world, coffee_data)
+class(world_coffee)
 
+names(world_coffee)
+plot(world_coffee["coffee_production_2017"])
 
 
 
