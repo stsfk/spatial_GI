@@ -41,6 +41,39 @@ class(world_coffee)
 names(world_coffee)
 plot(world_coffee["coffee_production_2017"])
 
+elev = raster(nrows = 6, ncols = 6, res = 0.5,
+              xmn = -1.5, xmx = 1.5, ymn = -1.5, ymx = 1.5,
+              vals = 1:36)
+
+grain_order = c("clay", "silt", "sand")
+grain_char = sample(grain_order, 36, replace = TRUE)
+grain_fact = factor(grain_char, levels = grain_order)
+grain = raster(nrows = 6, ncols = 6, res = 0.5, 
+               xmn = -1.5, xmx = 1.5, ymn = -1.5, ymx = 1.5,
+               vals = grain_fact)
+
+r_stack = stack(elev, grain)
+names(r_stack) = c("elev", "grain")
+
+raster::subset(r_stack, "elev")
+r_stack[["elev"]]
+r_stack$elev
+r_stack[1]
+
+# Exercises ---------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
