@@ -62,18 +62,112 @@ r_stack[1]
 
 # Exercises ---------------------------------------------------------------
 
+library(spData)
+data(us_states)
+data(us_states_df)
 
+# 1
+us_states_name <- us_states %>%
+  dplyr::select(NAME) %>%
+  rename(name = NAME) %>%
+  st_drop_geometry()
 
+# 2
+us_states_pop <- us_states %>%
+  select(contains("pop"))
 
+# 3
+us_states %>% 
+  filter(REGION == "Midwest")
 
+us_states %>%
+  filter(REGION == "West",
+         AREA <= units::set_units(5000000, "km^2"))
 
+us_states %>%
+  filter(REGION == "South",
+         AREA <= units::set_units(150000, "km^2"),
+         total_pop_15 > 7e6)
 
+# 4
+us_states$total_pop_15 %>% sum()
 
+# 5
+us_states %>%
+  count(REGION) %>%
+  plot()
 
+# 6
+us_states %>%
+  group_by(REGION) %>%
+  summarise(pop = sum(total_pop_15))
 
+# 7
+us_states %>%
+  left_join(us_states_df, by = c(NAME = "state")) %>%
+  class()
 
+# 8
+us_states_df %>%
+  anti_join(us_states, by = c("state" = "NAME"))
 
+# 9
+us_states %>%
+  left_join(us_states_df, by = c(NAME = "state")) %>%
+  mutate(pop_den = total_pop_15/AREA)
 
+# 10
+us_states %>%
+  left_join(us_states_df, by = c(NAME = "state")) %>%
+  transmute(
+    NAME = NAME,
+    pop_den15 = as.numeric(total_pop_15 / AREA),
+    pop_den10 = as.numeric(total_pop_10 / AREA),
+    pop_den_change = as.numeric(pop_den15 - pop_den10)
+  ) %>%
+  plot()
+
+# 11
+temp <- names(us_states) %>%
+  tolower()
+us_states %>%
+  setNames(temp)
+
+# 12
+us_states_sel <- us_states %>%
+  left_join(us_states_df, by = c(NAME = "state")) %>%
+  dplyr::select(median_income_15) %>%
+  rename(Income = median_income_15)
+
+# 13
+us_states %>%
+  left_join(us_states_df, by = c(NAME = "state")) %>%
+  transmute(
+    NAME = NAME,
+    REGION = REGION,
+    income_change = as.numeric(median_income_15 - median_income_10)
+  ) %>%
+  group_by(REGION) %>%
+  summarise(mean = mean(income_change)) %>%
+  arrange(mean)
+
+# 14
+ras <- raster(nrows = 9, ncols = 9, res = 0.5,
+              xmn = 0, xmx = 4.5, ymn = 0, ymx = 4.5,
+              vals = sample(x = 1:20, 81, replace = T))
+ras %>% dim()
+plot(ras)
+
+# 15
+modal(ras)
+
+# 16
+library(RQGIS)
+data(dem, package = "RQGIS")
+plot(dem)
+
+hist(dem)
+boxplot(dem)
 
 
 
