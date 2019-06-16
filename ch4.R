@@ -8,4 +8,4 @@ canterbury_height = nz_height[canterbury, ]
 
 nz_height[canterbury, , op = st_disjoint]
 
-
+plot(nz_height)
