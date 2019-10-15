@@ -12,3 +12,7 @@ cluster6/
 *.txt
 *.h5
 *.pdf
+*.jpg
+*.png
+*.svg
+*.Rda

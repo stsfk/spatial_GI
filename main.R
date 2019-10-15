@@ -1,14 +1,17 @@
 library(tidyverse)
 library(stringr)
 library(scales)
+library(ggalluvial)
+library(TR8)
+library(Taxonstand)
+library(stringr)
 
 # Data --------------------------------------------------------------------
 
-data_raw <- read_csv("C:/Users/User/Desktop/DEP Green Infrastructure/GI_assets_publicMap_construct.csv",
+data_raw <- read_csv("./data/GI_assets_publicMap_construct_new.csv",
                      col_types = cols(
                        .default = col_character(),
                        Asset_ID = col_double(),
-                       TDA_ID = col_double(),
                        DEP_Cont_1 = col_double(),
                        Asset_X_Co = col_double(),
                        Asset_Y_Co = col_double(),
@@ -16,10 +19,8 @@ data_raw <- read_csv("C:/Users/User/Desktop/DEP Green Infrastructure/GI_assets_p
                        Secondary = col_double(),
                        Community = col_double(),
                        City_Counc = col_double(),
-                       Assembly_D = col_double(),
                        Asset_Leng = col_double(),
-                       Asset_Widt = col_double(),
-                       Calc__Rain = col_double()
+                       Asset_Widt = col_double()
                      ))
 
 
@@ -94,7 +95,9 @@ ggplot(data_plot) +
   geom_bar(aes(reorder(tree_names, tree_names, function(x) length(x)))) +
   coord_flip()
 
-
+# 
+data_plot <- data_raw %>%
+  filter(Tree_Speci != "No Tree")
 
 
 
