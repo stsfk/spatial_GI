@@ -20,9 +20,9 @@ data_raw <- read_csv("./data/GI_assets_publicMap_construct_new.csv",
                        Community = col_double(),
                        City_Counc = col_double(),
                        Asset_Leng = col_double(),
-                       Asset_Widt = col_double()
+                       Asset_Widt = col_double(),
+                       Asset_Area = col_double()
                      ))
-
 
 # Plot --------------------------------------------------------------------
 
@@ -96,8 +96,108 @@ ggplot(data_plot) +
   coord_flip()
 
 # 
-data_plot <- data_raw %>%
-  filter(Tree_Speci != "No Tree")
+data_raw %>%
+  count(Asset_Type) %>%
+  arrange(desc(n))
+
+data_raw %>%
+  count(Tree_Latin) %>%
+  arrange(desc(n))
+
+data_raw %>%
+  count(Status_Gro) %>%
+  arrange(desc(n))
+
+top_Asset_Type <- data_raw %>%
+  count(Asset_Type) %>%
+  arrange(desc(n)) %>%
+  pull(Asset_Type)
+top_Asset_Type <- top_Asset_Type[1:3]
+
+data_plot <- data_raw
+data_plot$Asset_Type[-which(data_plot$Asset_Type %in% top_Asset_Type)] <- "Other"
+data_plot$Asset_Type[data_plot$Asset_Type == "ROW Infiltration Basin with Concrete Top"] <- "ROW w/ Cover"
+
+data_plot <- data_plot %>%
+  filter(Borough %in% c("Queens", "Brooklyn", "Bronx")) %>%
+  mutate(Tree_Latin = replace(Tree_Latin, is.na(Tree_Latin), "No Tree"),
+         Tree_Latin = replace(Tree_Latin, Tree_Latin != "No Tree", "Has Tree")) %>%
+  group_by(Asset_Type, Borough, Status_Gro, Tree_Latin) %>%
+  summarise(area = sum(Asset_Area),
+         number = n()) %>%
+  ungroup() %>%
+  mutate(Asset_Type = factor(Asset_Type, levels = c(top_Asset_Type, "ROW w/ Cover", "Other")),
+         Borough = factor(Borough, levels = c("Queens", "Brooklyn", "Bronx")),
+         Tree_Latin = factor(Tree_Latin, levels = c("No Tree", "Has Tree")),
+         Status_Gro = factor(Status_Gro, levels = c("Constructed", "In Construction", "Final Design")))
+
+ggplot(data = data_plot,
+       aes(axis1 = Borough, axis2 = Asset_Type, axis3 = Tree_Latin,
+           y = number)) +
+  scale_x_discrete(limits = c("Borough", "Type", "Status"), expand = c(.05, .05)) +
+  labs(y = "Number of GIs") +
+  geom_alluvium(aes(fill = Status_Gro), color = "black") +
+  geom_stratum(width = 1/3) + 
+  geom_text(stat = "stratum", label.strata = TRUE, size = 4) +
+  scale_fill_brewer(palette = "Set2") +
+  ggtitle("Numbers of GIs grouped by Brough, Type, and Status") +
+  theme_minimal(base_size = 15) +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "top")
+
+ggsave("Number_GI_group.jpg", width = 25, height = 18, units = "cm", dpi = 400)
+
+
+
+# Area
+top_Asset_Type <- data_raw %>%
+  group_by(Asset_Type) %>% 
+  summarise(area = sum(Asset_Area)) %>%
+  arrange(desc(area)) %>%
+  pull(Asset_Type)
+top_Asset_Type <- top_Asset_Type[1:6]
+
+data_plot <- data_raw
+data_plot$Asset_Type[-which(data_plot$Asset_Type %in% top_Asset_Type)] <- "Other"
+data_plot$Asset_Type[data_plot$Asset_Type == "Multiple GI Components"] <- "Multiple GIs"
+top_Asset_Type[top_Asset_Type == "Multiple GI Components"] <- "Multiple GIs"
+
+data_plot <- data_plot %>%
+  filter(Borough %in% c("Queens", "Brooklyn", "Bronx")) %>%
+  mutate(Tree_Latin = replace(Tree_Latin, is.na(Tree_Latin), "No Tree"),
+         Tree_Latin = replace(Tree_Latin, Tree_Latin != "No Tree", "Has Tree")) %>%
+  group_by(Asset_Type, Borough, Status_Gro, Tree_Latin) %>%
+  summarise(area = sum(Asset_Area),
+            number = n()) %>%
+  ungroup() %>%
+  mutate(Asset_Type = factor(Asset_Type, levels = c(top_Asset_Type, "ROW w/ Cover", "Other")),
+         Borough = factor(Borough, levels = c("Queens", "Brooklyn", "Bronx")),
+         Tree_Latin = factor(Tree_Latin, levels = c("No Tree", "Has Tree")),
+         Status_Gro = factor(Status_Gro, levels = c("Constructed", "In Construction", "Final Design")))
+
+ggplot(data = data_plot,
+       aes(axis1 = Borough, axis2 = Asset_Type, axis3 = Tree_Latin,
+           y = area*0.09290304)) +
+  scale_x_discrete(limits = c("Borough", "Type", "Status"), expand = c(.05, .05)) +
+  labs(y = "Area of GIs [m²]") +
+  geom_alluvium(aes(fill = Status_Gro), color = "black") +
+  geom_stratum(width = 1/3) + 
+  geom_text(stat = "stratum", label.strata = TRUE, size = 4) +
+  scale_fill_brewer(palette = "Set2") +
+  ggtitle("Areas of GIs grouped by Brough, Type, and Status") +
+  theme_minimal(base_size = 15) +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "top")
+
+ggsave("Area_GI_group.jpg", width = 30, height = 18, units = "cm", dpi = 400)
 
 
 
@@ -105,10 +205,6 @@ data_plot <- data_raw %>%
 
 
 
-
-
-
-
-
-
+trait_list <- available_traits() %>%
+  filter(db = PLANTS)
 
