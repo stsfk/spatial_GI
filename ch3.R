@@ -91,6 +91,7 @@ us_states %>%
 
 # 4
 us_states$total_pop_15 %>% sum()
+us_states$total_pop_15 %>% range()
 
 # 5
 us_states %>%
@@ -125,6 +126,7 @@ us_states %>%
     pop_den10 = as.numeric(total_pop_10 / AREA),
     pop_den_change = as.numeric(pop_den15 - pop_den10)
   ) %>%
+  select(pop_den_change) %>%
   plot()
 
 # 11
@@ -136,8 +138,7 @@ us_states %>%
 # 12
 us_states_sel <- us_states %>%
   left_join(us_states_df, by = c(NAME = "state")) %>%
-  dplyr::select(median_income_15) %>%
-  rename(Income = median_income_15)
+  dplyr::select(Income = median_income_15)
 
 # 13
 us_states %>%
@@ -157,6 +158,9 @@ ras <- raster(nrows = 9, ncols = 9, res = 0.5,
               vals = sample(x = 1:20, 81, replace = T))
 ras %>% dim()
 plot(ras)
+getValues(ras)
+ras[]
+values(ras)
 
 # 15
 modal(ras)

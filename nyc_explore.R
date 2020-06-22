@@ -11,8 +11,12 @@ land_cover <- raster::raster("/Users/yang/Documents/GIS/NYC/Land_Cover/NYC_2017_
 
 sewershed <- st_read("/Users/yang/Documents/GIS/NYC/drainage/Sewershed/Sewershed.shp")
 
+dem <- raster("/Volumes/WD Data/data/nyc/NYC_DEM/NYC_DEM_1ft_Float_2/DEM_LiDAR_1ft_2010_Improved_NYC.img")
 
 # Preprocessing -----------------------------------------------------------
+
+units::set_units(st_area(sewershed),m^2) # area of sewershed
+
 
 gi_point <- gi_point %>%
   mutate(sewershed = st_within(gi_point, sewershed) %>% unlist())
