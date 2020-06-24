@@ -131,7 +131,82 @@ elev_3 = elev + elev_2
 elev_4 = extend(elev, elev_2)
 
 
+## 4 raster-vector interations
+
+# raster cropping
+
+srtm = raster(system.file("raster/srtm.tif", package = "spDataLarge"))
+zion = st_read(system.file("vector/zion.gpkg", package = "spDataLarge"))
+zion = st_transform(zion, projection(srtm))
+
+srtm_cropped = crop(srtm, zion)
+
+srtm_masked = mask(srtm, zion)
+
+# raster extraction
+data("zion_points", package = "spDataLarge")
+zion_points$elevation = raster::extract(srtm, zion_points)
+
+raster::extract(srtm, zion_points, buffer = 1000)
 
 
+zion_transect = cbind(c(-113.2, -112.9), c(37.45, 37.2)) %>%
+  st_linestring() %>% 
+  st_sfc(crs = projection(srtm)) %>% 
+  st_sf()
+
+transect = raster::extract(srtm, zion_transect, 
+                           along = TRUE, cellnumbers = TRUE)
+                           
+transect_df = purrr::map_dfr(transect, as_data_frame, .id = "ID")
+transect_coords = xyFromCell(srtm, transect_df$cell) # from cell id to coordinate
+pair_dist = geosphere::distGeo(transect_coords)[-nrow(transect_coords)]
+transect_df$dist = c(0, cumsum(pair_dist)) 
+
+zion_srtm_values = raster::extract(x = srtm, y = zion, df = TRUE) 
+
+group_by(zion_srtm_values, ID) %>% 
+  summarize_at(vars(srtm), list(~min(.), ~mean(.), ~max(.)))
+
+zion_nlcd = raster::extract(nlcd, zion, df = TRUE, factors = TRUE) 
+dplyr::select(zion_nlcd, ID, levels) %>% 
+  tidyr::gather(key, value, -ID) %>%
+  group_by(ID, key, value) %>%
+  tally() %>% 
+  tidyr::spread(value, n, fill = 0)
+
+#3 rasterization
+
+cycle_hire_osm_projected = st_transform(cycle_hire_osm, 27700)
+raster_template = raster(extent(cycle_hire_osm_projected), resolution = 1000,
+                         crs = st_crs(cycle_hire_osm_projected)$proj4string)
+
+ch_raster1 = rasterize(cycle_hire_osm_projected, raster_template, field = 1)
+ch_raster2 = rasterize(cycle_hire_osm_projected, raster_template, 
+                       field = 1, fun = "count")
+ch_raster3 = rasterize(cycle_hire_osm_projected, raster_template, 
+                       field = "capacity", fun = sum)
+
+california = dplyr::filter(us_states, NAME == "California")
+california_borders = st_cast(california, "MULTILINESTRING")
+raster_template2 = raster(extent(california), resolution = 0.5,
+                          crs = st_crs(california)$proj4string)
+
+california_raster1 = rasterize(california_borders, raster_template2) 
+
+# spatial vectorization
+elev_point = rasterToPoints(elev, spatial = TRUE) %>% 
+  st_as_sf()
 
 
+data(dem, package = "RQGIS")
+cl = rasterToContour(dem)
+plot(dem, axes = FALSE)
+plot(cl, add = TRUE)
+
+
+grain_poly = rasterToPolygons(grain) %>% 
+  st_as_sf()
+grain_poly2 = grain_poly %>% 
+  group_by(layer) %>%
+  summarize()
