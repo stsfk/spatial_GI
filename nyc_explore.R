@@ -12,9 +12,13 @@ gi_point <- st_read("/Users/yang/Documents/GIS/NYC/DEP_GI_Assets_Public/DEP_GI_A
 
 land_cover <- raster::raster("/Users/yang/Documents/GIS/NYC/Land_Cover/NYC_2017_LiDAR_LandCover.img")
 
+# land_cover2 <- raster::raster("/Volumes/WD Data/data/nyc/Land_Cover/NYC_2017_LiDAR_LandCover.img")
+
 sewershed <- st_read("/Users/yang/Documents/GIS/NYC/drainage/Sewershed/Sewershed.shp")
 
 dem <- raster("/Volumes/WD Data/data/nyc/NYC_DEM/NYC_DEM_1ft_Float_2/DEM_LiDAR_1ft_2010_Improved_NYC.img")
+
+st_crs(land_cover)$proj4string
 
 # Preprocessing -----------------------------------------------------------
 
