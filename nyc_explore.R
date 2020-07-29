@@ -216,10 +216,10 @@ ggplot(data_plot3, aes(x = direct_path, y = GI_ID)) +
   )
 
 # Raster-vector interactions ----------------------------------------------
+n_sample <- 1000
+gi_sample <- sample(nrow(gi_sub), n_sample)
 
-gi_sample <- sample(1:1700, 5)
-
-surrounding <- raster::extract(land_cover, gi_sub[1:5,], buffer = 50)
+surrounding <- raster::extract(land_cover, gi_sub[gi_sample,], buffer = 300)
 
 land_cover_template <- tibble(
   gi_id = rep(1, 8), 
@@ -236,8 +236,8 @@ land_cover_template <- tibble(
   )
 )
 
-data_plot <- vector("list", 5)
-for (i in 1:5){
+data_plot <- vector("list", n_sample)
+for (i in 1:n_sample){
   surrounding_summary <- surrounding[[i]] %>% 
     table()
   surrounding_summary <- 
@@ -248,21 +248,56 @@ for (i in 1:5){
   
   out <- land_cover_template
   
-  data_plot[[i]] <- land_cover_template %>%
+  out <- land_cover_template %>%
     left_join(surrounding_summary, by = "land_cover_id") %>%
+    select(land_cover_type, cover_percent) %>%
     mutate(cover_percent = replace(cover_percent, is.na(cover_percent), 0),
-           gi_id = i)
+           cover_percent = as.double(cover_percent))
+  
+  temp <- as_tibble(out[,2] %>% t())
+  names(temp) <- out$land_cover_type 
+  
+  temp <- temp %>%
+    mutate(gi_id = i) %>%
+    dplyr::select(gi_id, everything())
+  
+  data_plot[[i]] <- temp
 }
 
-data_plot <- data_plot %>%
+data_process <- data_plot %>%
   bind_rows()
+x <- data_process[,-1]
+cl <- kmeans(x, 3, nstart = 10)
+
+
+ks <- 1:50
+tot_within_ss <- sapply(ks, function(k) {
+  cl <- kmeans(x, k, nstart = 10)
+  cl$tot.withinss
+})
+plot(ks, tot_within_ss, type = "b")
+
+
+
+d <- dist(data_process[, -1])
+hcl <- hclust(d)
+hcl
+
+plot(hcl)
+
+abline(h = 25, col = "red")
+
 
 ggplot(data_plot, aes(land_cover_type,cover_percent, fill = land_cover_type)) +
   geom_bar(stat="identity") +
   facet_wrap(~gi_id)
 
+km <- kmeans(x, centers = 5, nstart = 10)
+hcl <- hclust(d)
+table(km$cluster, cutree(hcl, k = 5))
 
 
 
-
+hc1 <- hclust(d, method = "complete" )
+plot(hc1, cex = 0.6, hang = -1)
 
