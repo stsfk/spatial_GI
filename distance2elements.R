@@ -101,8 +101,92 @@ gi <- gi_green # subset selected for analysis
 # nature area -------------------------------------------------------------
 
 
+# drainage ----------------------------------------------------------------
 
+# preprocess: correct names
+cso_outfall_mismatched <- setdiff(cso_shed$PRIMARY_OU, cso$outfall_id)
+cso_outfall_new <- c("BB-006", "BB-019", "BB-020", "BB-031", "BB-038", "BB-044", "BB-046", "BB-047", "HP-839", "JAM-003A", "NCB-019", "NCM-050", 
+                     "NCQ-027", "NR-043", "OH-061", "OH-063", "OH-066", "OH-023", "OH-606", "TI-074", "TI-075", "TI-076", "TI-013", "TI-604",    
+                     "TI-621", "WI-073", "WIM-028", "WIM-029")
 
+for (i in seq_along(cso_outfall_mismatched)){
+  cso_shed$PRIMARY_OU[cso_shed$PRIMARY_OU == cso_outfall_mismatched[i]] <- cso_outfall_new[i]
+}
 
+# preprocess: join CSOshed with the same name
+cso_shed_2join_outfalls <- cso_shed %>% count(PRIMARY_OU) %>% dplyr::filter(n > 1) %>% pull(PRIMARY_OU)
+for (i in seq_along(cso_shed_2join_outfalls)){
+  cso_shed_2join_outfall <- cso_shed_2join_outfalls[i]
+  
+  out <- cso_shed %>%
+    dplyr::filter(PRIMARY_OU == cso_shed_2join_outfall) %>%
+    summarise(PRIMARY_OU = PRIMARY_OU[1])
+  
+  cso_shed <- cso_shed %>%
+    dplyr::filter(PRIMARY_OU != cso_shed_2join_outfall) %>%
+    bind_rows(out)
+}
 
+# preprocess: join cso_shed and CSO, drop rows without flow information
+cso_process <- cso_shed %>%
+  left_join(cso %>% st_drop_geometry(), by = c("PRIMARY_OU" = "outfall_id")) %>%
+  drop_na(contains("volume")|contains("events")) # 340 cso_shed with cso record
+  
+# plot: get CSO number and volume each year
+data_plot <- cso_process %>%
+  gather(item, value, contains("volume")|contains("events")) %>%
+  mutate(year = str_extract(item, "[0-9]+"),
+         item = str_extract(item, "[a-z]+")) %>%
+  spread(item, value)
+
+ggplot(data_plot, aes(events, volume)) +
+  geom_point()+
+  facet_wrap(~factor(year), scales = "free") +
+  labs(x = "# of events",
+       y = "CSO volume",
+       title = "CSO number and volume of each CSO outfall in each year") +
+  theme_bw()
+
+# preprocess: compute volume per area
+#   million US gallons = 133680.556 cubic feet
+cso_process <- cso_process %>%
+  gather(item, value, contains("volume")|contains("events")) %>%
+  mutate(year = str_extract(item, "[0-9]+"),
+         item = str_extract(item, "[a-z]+")) %>%
+  spread(item, value) %>%
+  mutate(area = as.numeric(st_area(geometry)),
+         cso_depth = volume*133680.556/area) %>%
+  select(PRIMARY_OU, area, year, cso_depth, volume, events, everything()) 
+
+# preprocess: compute volume per area
+
+get_gi_metrics <- function(gi, cso_shed_shape, item = "Asset_Area", fn){
+  # Get the metrics "item" of GIs within cso_shed_shape, return value summarized by fn 
+  gi[cso_shed_shape, ] %>%
+    pull(item) %>%
+    fn()
+}
+
+out <- tibble(
+  PRIMARY_OU = cso_process$PRIMARY_OU %>% unique(),
+  gi_area = 0
+)
+for (i in 1:nrow(out)){
+  cso_shed_shape <- cso_process %>%
+    dplyr::filter(PRIMARY_OU == out$PRIMARY_OU[[i]])
+  out$gi_area[i] <- get_gi_metrics(gi, cso_shed_shape, "Asset_Area", sum)  # gi_full may be used here
+}
+
+cso_process <- cso_process %>%
+  left_join(out, by = "PRIMARY_OU")
+
+# analysis
+
+ggplot(cso_process, aes(volume, gi_area)) +
+  geom_point()+
+  facet_wrap(~factor(year), scales = "free") +
+  labs(y = "GI area [ft2]",
+       x = "CSO volume [million gallon]",
+       title = "CSO volume vs. GI areas in each year") +
+  theme_bw()
 
