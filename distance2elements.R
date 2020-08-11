@@ -71,3 +71,38 @@ cso <- st_transform(cso, ref_crs) #13
 cso_shed <- st_transform(cso_shed, ref_crs) #13
 subsewershed <- st_transform(subsewershed, ref_crs) #13
 
+# Group GIs into two types
+# ROWEB unknown
+gi_type <- gi_point %>% 
+  count(Asset_Type) %>%
+  arrange(desc(n)) %>%
+  pull(Asset_Type)
+
+green_gi_type <- c(
+  "ROWB", "ROWGS", "ROWRG", "ROWSGS", "Rain Garden", 
+  "ROW Infiltration Basin with Grass Top", "Green Roof", "ROW Infiltration Basin with Combination of Concrete and Grass Top", "Engineered Soil Tree Pit", "Rooftop Farm",
+  "Combined Blue/Green Roof"
+)
+
+other_gi_type <- setdiff(gi_type, green_gi_type)
+
+gi_point <- gi_point %>%
+  mutate(green = Asset_Type %in% green_gi_type)
+
+# GIs for later analysis
+gi_full <- gi_point
+gi_green <- gi_point %>%
+  dplyr::filter(green)
+gi_other <- gi_point %>%
+  dplyr::filter(!green)
+
+gi <- gi_green # subset selected for analysis
+
+# nature area -------------------------------------------------------------
+
+
+
+
+
+
+
