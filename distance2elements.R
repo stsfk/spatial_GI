@@ -34,7 +34,7 @@ road <- st_read("/Users/yang/Documents/GIS/NYC/elements/ROADBED/ROADBED.shp")
 #  9. sidewalk
 sidewalk <- st_read("/Users/yang/Documents/GIS/NYC/elements/SIDEWALK/SIDEWALK.shp")
 #  10. MS4 areas
-MS4_area <- st_read("/Users/yang/Documents/GIS/NYC/elements/MS4OpenData.gdb/", layer = "MS4DRAINAGEAREAS")
+MS4_area <- st_read("/Users/yang/Documents/GIS/NYC/elements/MS4_area/MS4_area.shp")
 #  11. MS4 outfalls
 MS4_outfall <- st_read("/Users/yang/Documents/GIS/NYC/elements/MS4OpenData.gdb/", layer = "MS4OUTFALLS")
 #  12. drainage area type
@@ -45,6 +45,8 @@ cso <- st_read("/Users/yang/Documents/GIS/NYC/drainage/CSOs_2019/CSOs_2019.shp")
 cso_shed <- st_read("/Users/yang/Documents/GIS/NYC/drainage/DEP_CSOsheds/DEP_CSOsheds.shp")
 #  15. subsewershed
 subsewershed <- st_read("/Users/yang/Documents/GIS/NYC/drainage/Subsewersheds/Subsewersheds.shp")
+#  16. imperviousness
+imperviousness <- st_read("/Users/yang/Documents/GIS/NYC/Impervious_20Surface/Queens.gdb/", layer = "QN_pIApp")
 
 
 # Preprocessess -----------------------------------------------------------
@@ -68,8 +70,10 @@ MS4_area <- st_transform(MS4_area, ref_crs) #10
 MS4_outfall <- st_transform(MS4_outfall, ref_crs) #11
 drainage_type <- st_transform(drainage_type, ref_crs) #12
 cso <- st_transform(cso, ref_crs) #13
-cso_shed <- st_transform(cso_shed, ref_crs) #13
-subsewershed <- st_transform(subsewershed, ref_crs) #13
+cso_shed <- st_transform(cso_shed, ref_crs) #14
+subsewershed <- st_transform(subsewershed, ref_crs) #15
+imperviousness <-  st_transform(imperviousness, ref_crs) #16
+
 
 # Group GIs into two types
 # ROWEB unknown
@@ -97,9 +101,6 @@ gi_other <- gi_point %>%
   dplyr::filter(!green)
 
 gi <- gi_green # subset selected for analysis
-
-# nature area -------------------------------------------------------------
-
 
 # drainage ----------------------------------------------------------------
 
@@ -190,3 +191,158 @@ ggplot(cso_process, aes(volume, gi_area)) +
        title = "CSO volume vs. GI areas in each year") +
   theme_bw()
 
+
+ggplot(cso_process %>% filter(year == 2006), aes(area, gi_area)) +
+  geom_point()+
+  labs(y = "GI area [ft2]",
+       x = "CSOshed area [ft2]",
+       title = "GI area vs CSOshed area") +
+  theme_bw()
+
+
+# MS4 
+out <- tibble(
+  OBJECTID = MS4_area$OBJECTID %>% unique(),
+  gi_area = 0
+)
+for (i in 1:nrow(out)){
+  cso_shed_shape <- MS4_area %>%
+    dplyr::filter(OBJECTID == out$OBJECTID[[i]])
+  out$gi_area[i] <- get_gi_metrics(gi, cso_shed_shape, "Asset_Area", sum)  # gi_full may be used here
+}
+
+data_plot <- MS4_area %>%
+  left_join(out, by = "OBJECTID")
+
+ggplot(data_plot, aes(Shape_Area, gi_area)) +
+  geom_point() +
+  labs(x = "separated sewershed area [ft2]",
+       y = "GI area [ft2]",
+       labs = "separated sewershed area vs. GI area") +
+  theme_bw()
+
+
+(data_plot$Shape_Area %>% sum()) /(sewershed$Squarefeet %>% sum()) # 0.2496515 of all drainage area is separate system
+
+(data_plot$gi_area %>% sum())/(gi$Asset_Area %>% sum()) # 0.05658718 of GI area
+  
+
+# imperviousness
+
+gi_sub <- gi %>%
+  dplyr::filter(Borough == "Queens") %>%
+  slice(1:100)
+
+get_nearby_parcel_info <- function(i, item = "Percent_Impv"){
+  # TODO: number of n nearest parcels
+  
+  ind <- st_distance(gi_sub[i,], imperviousness) %>%
+    unlist() %>%
+    which.min()
+  
+  imperviousness[ind,] %>%
+    pull(item)
+}
+
+gi_sub <- gi_sub %>%
+  mutate(imperviousness = sapply(1:n(), get_closest_parcel))
+
+gi_sub %>%
+  ggplot(aes(imperviousness)) +
+  geom_density()+
+  labs(title = "Distribution of imperviousness of nearby land parcels") +
+  theme_bw()
+
+
+# nature area -------------------------------------------------------------
+
+# park
+park_p <- st_centroid(park)
+
+get_nearby_parcel_info <- function(i){
+  # TODO: number of n nearest parcels
+  
+  dist_m <- st_distance(gi_sub[i,], park_p) %>%
+    as.vector()
+  
+  list(nearest = min(dist_m),
+       impact = sum(park_p$SHAPE_Area/dist_m))
+}
+
+temp <- sapply(1:100, get_nearby_parcel_info) %>% t()
+
+gi_sub <- gi_sub %>%
+  mutate(nearest_park = temp[,1] %>% unlist(),
+         impact_park = temp[,2]%>% unlist())
+
+ggplot(gi_sub, aes(impact_park)) +
+  geom_density() +
+  labs(title = "Distribution of distance to park impact") +
+  theme_bw()
+
+# water
+
+get_nearby_parcel_info <- function(i){
+  # TODO: number of n nearest parcels
+  
+  dist_m <- st_distance(gi_sub[i,], hydrography) %>%
+    as.vector()
+  
+  list(nearest = min(dist_m))
+}
+
+temp <- sapply(1:100, get_nearby_parcel_info) %>% t()
+
+gi_sub <- gi_sub %>%
+  mutate(nearest_water = temp %>% unlist())
+
+ggplot(gi_sub, aes(nearest_water)) +
+  geom_density() +
+  labs(title = "Distribution of distance to nearest waterbody") +
+  theme_bw()
+
+# outfall
+
+get_nearby_parcel_info <- function(i){
+  # TODO: number of n nearest parcels
+  
+  outfall_id <- gi_sub$Outfall[[i]]
+  gi_outfall <- outfall %>% dplyr::filter(UNITID == outfall_id)
+  
+  if (nrow(gi_outfall) > 0){
+    st_distance(gi_sub[i,], gi_outfall) %>% as.vector() %>% unname() %>% as.numeric()
+  } else {
+    0
+  }
+}
+
+temp <- sapply(1:100, get_nearby_parcel_info) %>% as.vector()
+
+gi_sub <- gi_sub %>%
+  mutate(distance_to_outlet = temp)
+
+ggplot(gi_sub, aes(distance_to_outlet)) +
+  geom_density() +
+  labs(title = "Distribution of distance to outlet") +
+  theme_bw()
+
+# Cluster -----------------------------------------------------------------
+
+gi_analysis <- gi_sub %>%
+  select(Asset_Area, imperviousness:distance_to_outlet) %>%
+  st_drop_geometry()
+
+for (i in 1:ncol(gi_analysis)){
+  gi_analysis[,i] <- gi_analysis[,i]/mean(gi_analysis[,i])
+}
+
+kmeans(gi_analysis %>% data.matrix(), 6)
+
+
+
+
+
+
+
+
+  
