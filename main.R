@@ -138,7 +138,7 @@ ggplot(data = data_plot,
   labs(y = "Number of GIs") +
   geom_alluvium(aes(fill = Status_Gro), color = "black") +
   geom_stratum(width = 1/3) + 
-  geom_text(stat = "stratum", label.strata = TRUE, size = 4) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 4) +
   scale_fill_brewer(palette = "Set2") +
   ggtitle("Numbers of GIs grouped by Brough, Type, and Status") +
   theme_minimal(base_size = 15) +
@@ -186,7 +186,7 @@ ggplot(data = data_plot,
   labs(y = "Area of GIs [m²]") +
   geom_alluvium(aes(fill = Status_Gro), color = "black") +
   geom_stratum(width = 1/3) + 
-  geom_text(stat = "stratum", label.strata = TRUE, size = 4) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 4) +
   scale_fill_brewer(palette = "Set2") +
   ggtitle("Areas of GIs grouped by Brough, Type, and Status") +
   theme_minimal(base_size = 15) +
